@@ -1,0 +1,13 @@
+# ECK operator override values for the EKS system node group.
+#
+# The ECK operator chart exposes affinity as a top-level Helm value.
+# See: https://github.com/elastic/cloud-on-k8s/blob/main/deploy/eck-operator/values.yaml
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-group
+              operator: In
+              values:
+                - system

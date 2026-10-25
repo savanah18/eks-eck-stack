@@ -1,0 +1,43 @@
+# Terraform state and runtime data (may contain secrets)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+
+# Terraform inputs and plans
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+*.tfplan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Keep .terraform.lock.hcl tracked so provider versions stay pinned
+
+# Credentials, keys and kubeconfigs
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.csv
+*accessKeys*.csv
+*.kubeconfig
+kubeconfig
+.env
+.env.*
+!.env.example
+
+# Helm
+charts/*.tgz
+
+# Editors and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

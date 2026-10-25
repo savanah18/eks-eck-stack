@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-elasticsearch
+  namespace: elastic-stack
+spec:
+  podSelector:
+    matchLabels:
+      elasticsearch.k8s.elastic.co/cluster-name: elasticsearch
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: elasticsearch
+      ports:
+        - protocol: TCP
+          port: 9300
+    - from:
+        - podSelector:
+            matchLabels:
+              kibana.k8s.elastic.co/name: kibana
+        - podSelector:
+            matchLabels:
+              beat.k8s.elastic.co/name: metricbeat
+      ports:
+        - protocol: TCP
+          port: 9200
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: elasticsearch
+      ports:
+        - protocol: TCP
+          port: 9300

@@ -1,0 +1,379 @@
+---
+# Default values for eck-stack.
+# This is a YAML-formatted file.
+
+# If enabled, will use the eck-elasticsearch chart and deploy an Elasticsearch resource.
+#
+eck-elasticsearch:
+  enabled: true
+  # This is adjusting the full name of the elasticsearch resource so that both the eck-elasticsearch
+  # and the eck-kibana chart work together by default in the eck-stack chart.
+  fullnameOverride: elasticsearch
+
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.roles: ["master", "data", "ingest"]
+      # can be enabled when enough resources are attained Ref: https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/virtual-memory
+      node.store.allow_mmap: false 
+    resources:
+      limits:
+        memory: 4Gi #8Gi can be scaled up
+        cpu: 2
+      requests:
+        memory: 1Gi 
+        cpu: "0.5"  # reduced requests for demo purposes only
+    podTemplate:
+      spec:      
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: node-group
+                  operator: In
+                  values:
+                  - eck-stack
+        # Hard pod anti-affinity can leave replicas Pending when an AZ or
+        # eligible node is unavailable. These hard topology constraints
+        # balance Elasticsearch pods by zone and hostname instead.
+        # The scheduler keeps maxSkew within one; if no eligible placement
+        # exists, the pod remains Pending for an autoscaler to address.
+        topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: elasticsearch
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: elasticsearch
+
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi # Update accordingly
+        storageClassName: gp2 # kubectl get sc to get available storasgeClass
+        
+
+# If enabled, will use the eck-kibana chart and deploy a Kibana resource.
+#
+eck-kibana:
+  enabled: true
+  fullnameOverride: kibana
+  count: 2
+  # This is also adjusting the kibana reference to the elasticsearch resource named previously so that
+  # both the eck-elasticsearch and the eck-kibana chart work together by default in the eck-stack chart.
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    monitoring.ui.ccs.enabled: false
+  http:
+    service:
+      spec:
+        # Keep Kibana private. Public access is provided by the AWS ALB
+        # Ingress in kibana-ingress.yaml, which terminates client TLS.
+        type: ClusterIP
+  podTemplate:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-group
+                operator: In
+                values:
+                - eck-stack
+      # Hard pod anti-affinity can block both Kibana replicas when an AZ or
+      # eligible node is unavailable. These constraints preserve distribution
+      # while leaving a Pending pod as the signal for capacity automation.
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            kibana.k8s.elastic.co/name: kibana
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            kibana.k8s.elastic.co/name: kibana
+
+# If enabled, will use the eck-agent chart and deploy an Elastic Agent instance.
+#
+eck-agent:
+  enabled: false
+
+# If enabled, will use the eck-fleet-server chart and deploy a Fleet Server resource.
+#
+eck-fleet-server:
+  enabled: false
+
+# If enabled, will use the eck-beats chart and deploy a Beats resource.
+#
+eck-beats:
+  enabled: true
+  name: metricbeat
+  type: metricbeat
+  version: 9.5.0
+  elasticsearchRef:
+    name: elasticsearch
+  kibanaRef:
+    name: kibana
+  config:
+    # Since filebeat is used in the default values, this needs to be removed with an empty list. 
+    filebeat.inputs: []
+    metricbeat:
+      autodiscover:
+        providers:
+        - hints:
+            default_config: {}
+            enabled: "true"
+          node: ${NODE_NAME}
+          type: kubernetes
+      modules:
+      - module: system
+        period: 10s
+        metricsets:
+        - cpu
+        - load
+        - memory
+        - network
+        - process
+        - process_summary
+        process:
+          include_top_n:
+            by_cpu: 5
+            by_memory: 5
+        processes:
+        - .*
+      - module: system
+        period: 1m
+        metricsets:
+        - filesystem
+        - fsstat
+        processors:
+        - drop_event:
+            when:
+              regexp:
+                system:
+                  filesystem:
+                    mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib)($|/)
+      - module: kubernetes
+        period: 10s
+        node: ${NODE_NAME}
+        hosts:
+        - https://${NODE_NAME}:10250
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        ssl:
+          verification_mode: none
+        metricsets:
+        - node
+        - system
+        - pod
+        - container
+        - volume
+      - module: elasticsearch
+        period: 10s
+        metricsets:
+        - cluster_stats
+        - index
+        - index_recovery
+        - index_summary
+        - node
+        - node_stats
+        - pending_tasks
+        - shard
+        hosts:
+        - https://elasticsearch-es-http.elastic-stack.svc:9200
+        username: elastic
+        password: ${MONITORED_ES_PASSWORD}
+        ssl.verification_mode: none
+        xpack.enabled: true
+      - module: kibana
+        period: 10s
+        metricsets:
+        - stats
+        hosts:
+        - https://kibana-kb-http.elastic-stack.svc:5601
+        username: elastic
+        password: ${MONITORED_ES_PASSWORD}
+        ssl.verification_mode: none
+        xpack.enabled: true
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        serviceAccountName: metricbeat
+        automountServiceAccountToken: true # some older Beat versions are depending on this settings presence in k8s context
+        containers:
+        - args:
+          - -e
+          - -c
+          - /etc/beat.yml
+          - --system.hostfs=/hostfs
+          name: metricbeat
+          volumeMounts:
+          - mountPath: /hostfs/sys/fs/cgroup
+            name: cgroup
+          - mountPath: /var/run/docker.sock
+            name: dockersock
+          - mountPath: /hostfs/proc
+            name: proc
+          env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MONITORED_ES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: elasticsearch-es-elastic-user
+                key: elastic
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true # Allows to provide richer host metadata
+        securityContext:
+          runAsUser: 0
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - hostPath:
+            path: /sys/fs/cgroup
+          name: cgroup
+        - hostPath:
+            path: /var/run/docker.sock
+          name: dockersock
+        - hostPath:
+            path: /proc
+          name: proc
+  
+  clusterRole:
+    # permissions needed for metricbeat
+    # source: https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-module-kubernetes.html
+    name: metricbeat
+    rules:
+    - apiGroups:
+      - ""
+      resources:
+      - nodes
+      - namespaces
+      - events
+      - pods
+      verbs:
+      - get
+      - list
+      - watch
+    - apiGroups:
+      - events.k8s.io
+      resources:
+      - events
+      verbs:
+      - get
+      - list
+      - watch
+    - apiGroups:
+      - "extensions"
+      resources:
+      - replicasets
+      verbs:
+      - get
+      - list
+      - watch
+    - apiGroups:
+      - apps
+      resources:
+      - statefulsets
+      - deployments
+      - replicasets
+      verbs:
+      - get
+      - list
+      - watch
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/stats
+      verbs:
+      - get
+    - nonResourceURLs:
+      - /metrics
+      verbs:
+      - get
+  
+  serviceAccount:
+    name: metricbeat
+  
+  clusterRoleBinding:
+    name: metricbeat
+    subjects:
+    - kind: ServiceAccount
+      name: metricbeat
+    roleRef:
+      kind: ClusterRole
+      name: metricbeat
+      apiGroup: rbac.authorization.k8s.io
+
+# If enabled, will use the eck-logstash chart and deploy a Logstash resource.
+#
+eck-logstash:
+  enabled: false
+
+# If enabled, will use the eck-apm-server chart and deploy a standalone APM Server resource.
+#
+eck-apm-server:
+  enabled: false
+
+# If enabled, will use the eck-enterprise-search chart and deploy a Enterprise Search resource.
+#
+eck-enterprise-search:
+  enabled: false
+
+# If enabled, will use the eck-autoops-agent-policy chart and deploy an AutoOps Agent.
+#
+eck-autoops-agent-policy:
+  enabled: false
+
+# If enabled, will use the eck-package-registry chart and deploy a Package Registry resource.
+#
+eck-package-registry:
+  enabled: false
+
+# extraObjects allows injecting additional Kubernetes resources into the chart.
+# These resources will be created/deleted alongside the chart release.
+# The value can be a list or a map of strings, each string is a YAML manifest.
+# Helm templating is supported within each manifest.
+# Example (list):
+# extraObjects:
+#   - |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "eck-stack.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+# Example (map):
+# extraObjects:
+#   myConfigMap: |
+#     apiVersion: v1
+#     kind: ConfigMap
+#     metadata:
+#       name: {{ include "eck-stack.fullname" . }}-extra-config
+#       namespace: {{ .Release.Namespace }}
+#     data:
+#       key: value
+extraObjects: []

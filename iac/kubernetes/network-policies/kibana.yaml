@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-kibana
+  namespace: elastic-stack
+spec:
+  podSelector:
+    matchLabels:
+      kibana.k8s.elastic.co/name: kibana
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 10.0.0.0/16
+      ports:
+        - protocol: TCP
+          port: 5601
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: elasticsearch
+      ports:
+        - protocol: TCP
+          port: 9200
