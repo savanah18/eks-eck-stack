@@ -10,6 +10,7 @@ data "aws_availability_zones" "available" {
   }
 }
 
+# External dns addon is only enabled in production mode. It requires an IAM role to be created and associated with the external-dns service account.
 locals {
   cluster_name  = "emirates-demo-eks-${random_string.suffix.result}"
   is_production = var.mode == "production"
@@ -83,7 +84,7 @@ resource "aws_route53_zone" "public" {
   name = var.domain_name
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
 
     precondition {
       condition     = var.domain_name != null
@@ -246,8 +247,14 @@ module "eks" {
       capacity_type  = "ON_DEMAND"
 
       min_size     = 3
-      max_size     = 6
+      max_size     = 4
       desired_size = 3
+
+      # Replace one node at a time without launching a surge node. The account's
+      # On-Demand vCPU quota has no room for surge capacity right now.
+      update_config = {
+        max_unavailable = 1
+      }
 
       labels = {
         "node-group"         = "eck-stack"

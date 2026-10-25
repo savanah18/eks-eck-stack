@@ -10,13 +10,14 @@ variable "region" {
 }
 
 variable "kibana_hostname" {
-  description = "Fully qualified public DNS name for Kibana, published by the EKS-managed ExternalDNS (required when the EKS mode is production)"
+  description = "Fully qualified public DNS name for Kibana, published by the EKS-managed ExternalDNS (leave unset to use the ALB hostname)"
   type        = string
   default     = null
 }
 
-variable "acm_certificate_arn" {
-  description = "ACM certificate ARN covering kibana_hostname (required when the EKS mode is production)"
+variable "kibana_alb_hostname" {
+  description = "ALB DNS name to put on the self-signed certificate, for example k8s-elastic-kibana-xxxx.us-east-2.elb.amazonaws.com. Used only when kibana_hostname is unset. Browsers will warn about this certificate."
   type        = string
   default     = null
 }
+

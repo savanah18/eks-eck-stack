@@ -187,3 +187,6 @@ kubectl -n elastic-system get pods
 kubectl -n elastic-stack get elasticsearch,kibana,beats,pods
 kubectl -n elastic-stack get networkpolicy
 ```
+
+
+# Teardown

@@ -1,0 +1,30 @@
+{
+  "index_patterns": ["flight-bookings-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index.routing.allocation.awareness.attributes": "zone"
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "@timestamp":      { "type": "date" },
+        "event_type":      { "type": "keyword" },
+        "booking_id":      { "type": "keyword" },
+        "pnr":             { "type": "keyword" },
+        "flight_number":   { "type": "keyword" },
+        "origin":          { "type": "keyword" },
+        "destination":     { "type": "keyword" },
+        "departure_time":  { "type": "date" },
+        "cabin_class":     { "type": "keyword" },
+        "fare_amount":     { "type": "scaled_float", "scaling_factor": 100 },
+        "currency":        { "type": "keyword" },
+        "passengers":      { "type": "short" },
+        "channel":         { "type": "keyword" },
+        "skywards_tier":   { "type": "keyword" }
+      }
+    }
+  },
+  "priority": 100
+}

@@ -11,6 +11,10 @@ terraform {
     kubernetes = {
       source = "hashicorp/kubernetes"
     }
+
+    tls = {
+      source = "hashicorp/tls"
+    }
   }
 }
 

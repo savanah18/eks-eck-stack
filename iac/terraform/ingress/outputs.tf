@@ -1,6 +1,11 @@
 output "kibana_public_url" {
-  description = "Public HTTPS URL for Kibana through the ALB Ingress (null in production mode)"
-  value       = local.enabled ? "https://${var.kibana_hostname}" : null
+  description = "Public URL for Kibana through the ALB Ingress: HTTPS on kibana_hostname when set, otherwise HTTP on the ALB hostname (null in production mode only)"
+  value = (
+    local.use_domain ? "https://${var.kibana_hostname}" :
+    local.use_self_signed ? "https://${var.kibana_alb_hostname}" :
+    local.enabled ? "http://${try(kubernetes_manifest.kibana_ingress[0].object.status.loadBalancer.ingress[0].hostname, "pending")}" :
+    null
+  )
 }
 
 output "alb_hostname" {

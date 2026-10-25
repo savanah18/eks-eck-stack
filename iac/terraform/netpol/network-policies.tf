@@ -9,8 +9,13 @@ locals {
   }
 }
 
+variable "create_network_policies" {
+  type    = bool
+  default = true
+}
+
 resource "kubernetes_manifest" "network_policy" {
-  for_each = local.network_policy_manifests
+  for_each = var.create_network_policies ? local.network_policy_manifests : {}
 
   manifest = yamldecode(file(each.value))
 }

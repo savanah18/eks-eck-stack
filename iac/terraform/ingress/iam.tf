@@ -108,6 +108,28 @@ data "aws_iam_policy_document" "load_balancer_controller" {
     ]
     resources = ["*"]
   }
+
+  # Attach and detach certificates on the HTTPS listener.
+  statement {
+    actions = [
+      "elasticloadbalancing:AddListenerCertificates",
+      "elasticloadbalancing:RemoveListenerCertificates",
+      "elasticloadbalancing:ModifyListenerAttributes",
+    ]
+    resources = ["*"]
+  }
+
+  # Certificate discovery for the ALB listener. Without these the controller
+  # fails the Ingress build with AccessDeniedException on acm:ListCertificates.
+  statement {
+    actions = [
+      "acm:ListCertificates",
+      "acm:DescribeCertificate",
+      "iam:ListServerCertificates",
+      "iam:GetServerCertificate",
+    ]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role" "load_balancer_controller" {

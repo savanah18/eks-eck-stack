@@ -24,6 +24,11 @@ output "route53_zone_arn" {
   value       = one(aws_route53_zone.public[*].arn)
 }
 
+output "route53_zone_id" {
+  description = "ID of the public Route 53 zone (production only)"
+  value       = one(aws_route53_zone.public[*].zone_id)
+}
+
 output "route53_name_servers" {
   description = "Name servers to delegate at your registrar (production only)"
   value       = one(aws_route53_zone.public[*].name_servers)
