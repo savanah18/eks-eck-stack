@@ -20,7 +20,7 @@ eck-elasticsearch:
       node.store.allow_mmap: false
     resources:
       limits:
-        memory: 4Gi
+        memory: 1Gi
         cpu: 2
       requests:
         memory: 1Gi
@@ -71,15 +71,16 @@ eck-elasticsearch:
 
   - name: hot
     count: 3
+    zoneAwareness: {}
     config:
       node.roles: ["data_hot", "data_content", "ingest"]
       node.store.allow_mmap: false
     resources:
       limits:
-        memory: 8Gi
+        memory: 2Gi #8Gi originally
         cpu: 4
       requests:
-        memory: 1Gi
+        memory: 2Gi
         cpu: "1"
     podTemplate:
       spec:
@@ -125,6 +126,11 @@ eck-elasticsearch:
             storage: 50Gi
         storageClassName: gp2
 
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+
 # If enabled, will use the eck-kibana chart and deploy a Kibana resource.
 #
 eck-kibana:
@@ -142,7 +148,7 @@ eck-kibana:
       spec:
         # Keep Kibana private. Public access is provided by the AWS ALB
         # Ingress, which terminates client TLS.
-        type: ClusterIP
+        type: LoadBalancer
   podTemplate:
     spec:
       affinity:

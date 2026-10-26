@@ -226,7 +226,7 @@ module "eks" {
     elasticsearch_master = {
       name           = "elasticsearch-master"
       subnet_ids     = module.vpc.private_subnets
-      instance_types = ["t3.medium"]
+      instance_types = ["t3.medium"] #originally ["m5.large"]
       capacity_type  = "ON_DEMAND"
 
       min_size     = 3
@@ -243,7 +243,7 @@ module "eks" {
     elasticsearch_hot = {
       name           = "elasticsearch-hot"
       subnet_ids     = module.vpc.private_subnets
-      instance_types = ["m5.large"]
+      instance_types = ["m5.large"] #originally ["m5.xlarge"]
       capacity_type  = "ON_DEMAND"
 
       min_size     = 3
