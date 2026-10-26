@@ -1,0 +1,50 @@
+[
+  {
+    "@timestamp": "2026-10-27T00:00:00Z",
+    "event_type": "booking_created",
+    "booking_id": "BK1001",
+    "pnr": "A1B2C3",
+    "flight_number": "EK001",
+    "origin": "DXB",
+    "destination": "LHR",
+    "departure_time": "2026-11-01T08:30:00Z",
+    "cabin_class": "business",
+    "fare_amount": 4250.00,
+    "currency": "USD",
+    "passengers": 1,
+    "channel": "web",
+    "skywards_tier": "Gold"
+  },
+  {
+    "@timestamp": "2026-10-27T00:05:00Z",
+    "event_type": "booking_created",
+    "booking_id": "BK1002",
+    "pnr": "D4E5F6",
+    "flight_number": "EK202",
+    "origin": "DXB",
+    "destination": "JFK",
+    "departure_time": "2026-11-02T14:15:00Z",
+    "cabin_class": "economy",
+    "fare_amount": 980.50,
+    "currency": "USD",
+    "passengers": 2,
+    "channel": "mobile",
+    "skywards_tier": "Silver"
+  },
+  {
+    "@timestamp": "2026-10-27T00:10:00Z",
+    "event_type": "booking_created",
+    "booking_id": "BK1003",
+    "pnr": "G7H8J9",
+    "flight_number": "EK404",
+    "origin": "SIN",
+    "destination": "DXB",
+    "departure_time": "2026-11-03T02:45:00Z",
+    "cabin_class": "first",
+    "fare_amount": 7200.00,
+    "currency": "USD",
+    "passengers": 1,
+    "channel": "agent",
+    "skywards_tier": "Platinum"
+  }
+]

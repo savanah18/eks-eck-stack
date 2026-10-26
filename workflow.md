@@ -12,12 +12,6 @@
    terraform plan
    terraform apply
    ```
-   This root provisions only the AWS and EKS infrastructure.
-
-4. Destroy (Optional)
-   ```
-   terraform destroy
-   ```
 
 ## Verification
 1. Configure kubeconfig
@@ -163,8 +157,14 @@ separate Terraform root:
 
 ## Verify Successful Installation
   ```
-  kubectl -n elastic-system get sts,pods,pvc
-  kubectl -n elastic-system get elasticsearch,kibana,beats
+  # Check if the ECK operator is running
+  kubectl -n elastic-system get services,sts,deploy,pods,pvc
+
+  # Verify successful elastic cluster stack
+  kubectl -n elastic-stack get services,sts,deploy,pods,pvc
+  kubectl -n elastic-stack get elasticsearch,kibana,beats #wait for all resources to be green
+
+  # Verify elastic nodesets are distributed into multiple availability zones
   kubectl -n elastic-stack get pods \
   -l common.k8s.elastic.co/type=elasticsearch \
   -o custom-columns='NAME:.metadata.name,MASTER:.metadata.labels.elasticsearch\.k8s\.elastic\.co/node-master,HOT:.metadata.labels.elasticsearch\.k8s\.elastic\.co/node-data_hot,ZONE:.metadata.labels.topology\.kubernetes\.io/zone,STATUS:.status.phase'
@@ -188,5 +188,52 @@ kubectl -n elastic-stack get elasticsearch,kibana,beats,pods
 kubectl -n elastic-stack get networkpolicy
 ```
 
+# Functional Tests
+## Elasticsearch Indexing
+  ```
+  ES_HOST="$(kubectl -n elastic-stack get svc elasticsearch-es-http \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+
+  ES_PASS="$(kubectl -n elastic-stack get secret elasticsearch-es-elastic-user \
+  -o jsonpath='{.data.elastic}' | base64 --decode)"
+
+  ES_URL="https://${ES_HOST}:9200" \
+  ES_USER=elastic \
+  ES_PASS="$ES_PASS" \
+  ES_INSECURE=true \
+  ./scripts/demo_bookings.sh --create \
+    --data-file scripts/flight-bookings-data.json
+  ```
+
+## Indexing Documents
+  ```
+  ES_URL="https://${ES_HOST}:9200" \
+  ES_USER=elastic \
+  ES_PASS="$ES_PASS" \
+  ES_INSECURE=true \
+  ./scripts/demo_bookings.sh --index scripts/flight-bookings-data.json
+  ```
+
+## Elasticsearch Query
+  ```
+  ES_HOST="$(kubectl -n elastic-stack get svc elasticsearch-es-http \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+
+  ES_PASS="$(kubectl -n elastic-stack get secret elasticsearch-es-elastic-user \
+  -o jsonpath='{.data.elastic}' | base64 --decode)"
+
+  ES_URL="https://${ES_HOST}:9200" \
+  ES_USER=elastic \
+  ES_PASS="$ES_PASS" \
+  ES_INSECURE=true \
+  ./scripts/demo_bookings.sh --query \
+    --match origin=DXB \
+    --match destination=LHR \
+    --pretty
+  ```
+
+The equivalent Kibana Dev Tools requests for creating the template and index,
+loading booking documents, and querying the alias are documented in
+[`scripts/flight-bookings-dev-console.md`](../scripts/flight-bookings-dev-console.md).
 
 # Teardown

@@ -3,8 +3,7 @@
   "template": {
     "settings": {
       "number_of_shards": 3,
-      "number_of_replicas": 1,
-      "index.routing.allocation.awareness.attributes": "zone"
+      "number_of_replicas": 1
     },
     "mappings": {
       "dynamic": "strict",

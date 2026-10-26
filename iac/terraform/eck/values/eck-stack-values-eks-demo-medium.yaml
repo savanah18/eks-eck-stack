@@ -19,6 +19,9 @@ eck-elasticsearch:
       node.roles: ["master"]
       node.store.allow_mmap: false
     resources:
+      # Note. It is recommended to make the resources Guaranteed QOS.
+      # Additionally, to prevent elasticsearch issues during upgrade, set memory request=limits for 
+      #   ResourcesAwareManagement condition to proceed during elasticsearch updates/upgrades.
       limits:
         memory: 1Gi
         cpu: 2
@@ -71,11 +74,14 @@ eck-elasticsearch:
 
   - name: hot
     count: 3
-    zoneAwareness: {}
+    zoneAwareness: {} # Enable zone awareness
     config:
       node.roles: ["data_hot", "data_content", "ingest"]
       node.store.allow_mmap: false
     resources:
+      # Note. It is recommended to make the resources Guaranteed QOS.
+      # Additionally, to prevent elasticsearch issues during upgrade, set memory request=limits for 
+      #   ResourcesAwareManagement condition to proceed during elasticsearch updates/upgrades.
       limits:
         memory: 2Gi #8Gi originally
         cpu: 4
