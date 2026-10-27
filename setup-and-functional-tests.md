@@ -177,6 +177,15 @@ cd iac/terraform/ingress
 terraform apply \
   -var="cluster_name=$(cd ../eks && terraform output -raw cluster_name)" \
   -var="kibana_alb_hostname=kibana.example.com"
+
+kubectl -n elastic-stack get ingress -o json | 
+```
+
+Verify the deployment:
+
+```bash
+kubectl -n kube-system get deploy aws-load-balancer-controller
+kubectl -n elastic-stack get ingress
 ```
 
 ## Configure secure network policies
