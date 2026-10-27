@@ -6,7 +6,7 @@
   terraform fmt -recursive
   terraform init
   ```
-3. Validate, Plan and Apply
+2. Validate, Plan and Apply
    ```
    terraform validate
    terraform plan
@@ -28,49 +28,6 @@
 Ensure the AWS CLI is installed and the active credentials can access the EKS
 cluster before running the separate autoscaler, ECK, and NetworkPolicy roots.
 
-# Public Kibana Ingress
-Only when the EKS root has `mode=production`: the ECK root keeps Kibana's Service
-as `ClusterIP`, the EKS root installs the EKS-managed `external-dns` add-on, and
-the ingress root installs the AWS Load Balancer Controller and creates an HTTPS
-ALB Ingress in `elastic-stack`. With `mode=demo` (the default) the ECK root exposes
-Kibana through a `LoadBalancer` Service instead, and neither the ingress root nor
-ExternalDNS is created.
-
-Prerequisites:
-
-- A domain you own, whose DNS the EKS root's Route 53 zone will serve.
-- An ACM certificate in the cluster region covering the Kibana hostname.
-- The EKS `eks-pod-identity-agent` add-on, enabled by the EKS root.
-
-Apply the EKS root in production mode first. This creates the Route 53 zone for
-`domain_name` and the EKS-managed ExternalDNS add-on:
-
-```bash
-cd iac/terraform/eks
-terraform apply -var="mode=production" -var="domain_name=example.com"
-terraform output route53_name_servers
-```
-
-Set those name servers as the domain's NS records at your registrar before the
-ACM certificate validation or any DNS record will resolve. The zone has
-`prevent_destroy` set, so remove that lifecycle entry deliberately before destroying it.
-
-Apply the ingress after the ECK stack:
-
-```bash
-cd iac/terraform/ingress
-terraform init
-terraform validate
-terraform apply \
-  -var="cluster_name=$(cd ../eks && terraform output -raw cluster_name)" \
-  -var="kibana_hostname=kibana.example.com" \
-  -var="acm_certificate_arn=<acm-certificate-arn>"
-```
-
-The ALB is internet-facing but only exposes HTTPS to clients; HTTP is
-redirected to HTTPS. The backend remains HTTPS to ECK's private Kibana
-Service. The EKS-managed ExternalDNS add-on is limited to the zones listed in
-`external_dns_hosted_zone_arns` by its IAM role and uses TXT ownership records.
 
 # Cluster Autoscaler Setup
 ## Configure autoscaling for Elasticsearch hot/data nodes
@@ -170,8 +127,59 @@ separate Terraform root:
   -o custom-columns='NAME:.metadata.name,MASTER:.metadata.labels.elasticsearch\.k8s\.elastic\.co/node-master,HOT:.metadata.labels.elasticsearch\.k8s\.elastic\.co/node-data_hot,ZONE:.metadata.labels.topology\.kubernetes\.io/zone,STATUS:.status.phase'
   ```
 
+## Kibana Ingress
+Only when the EKS root has `mode=production`: the ECK root keeps Kibana's Service
+as `ClusterIP`, the EKS root installs the EKS-managed `external-dns` add-on, and
+the ingress root installs the AWS Load Balancer Controller and creates an HTTPS
+ALB Ingress in `elastic-stack`. With `mode=demo` (the default) the ECK root exposes
+Kibana through a `LoadBalancer` Service instead, and neither the ingress root nor
+ExternalDNS is created.
+
+Prerequisites:
+
+- A domain you own, whose DNS the EKS root's Route 53 zone will serve.
+- An ACM certificate in the cluster region covering the Kibana hostname.
+- The EKS `eks-pod-identity-agent` add-on, enabled by the EKS root.
+
+Apply the EKS root in production mode first. This creates the Route 53 zone for
+`domain_name` and the EKS-managed ExternalDNS add-on:
+
+```bash
+cd iac/terraform/eks
+terraform apply -var="mode=production" -var="domain_name=example.com"
+terraform output route53_name_servers
+```
+
+Set those name servers as the domain's NS records at your registrar before the
+ACM certificate validation or any DNS record will resolve. The zone has
+`prevent_destroy` set, so remove that lifecycle entry deliberately before destroying it.
+
+Apply the ingress after the ECK stack:
+
+```bash
+cd iac/terraform/ingress
+terraform init
+terraform validate
+terraform apply \
+  -var="cluster_name=$(cd ../eks && terraform output -raw cluster_name)" \
+  -var="kibana_hostname=kibana.example.com" \
+  -var="acm_certificate_arn=<acm-certificate-arn>"
+```
+
+The ALB is internet-facing but only exposes HTTPS to clients; HTTP is
+redirected to HTTPS. The backend remains HTTPS to ECK's private Kibana
+Service. The EKS-managed ExternalDNS add-on is limited to the zones listed in
+`external_dns_hosted_zone_arns` by its IAM role and uses TXT ownership records.
+
+**For self-signed certificates (Non-Production)**
+```
+cd iac/terraform/ingress
+terraform apply \
+  -var="cluster_name=$(cd ../eks && terraform output -raw cluster_name)" \
+  -var="kibana_alb_hostname=kibana.example.com"
+```
+
 ## Configure secure network policies
-Apply the NetworkPolicies only after ECK is healthy:
 
 ```bash
 cd ../netpol
@@ -183,8 +191,6 @@ terraform apply \
 Verify the deployment:
 
 ```bash
-kubectl -n elastic-system get pods
-kubectl -n elastic-stack get elasticsearch,kibana,beats,pods
 kubectl -n elastic-stack get networkpolicy
 ```
 
@@ -222,7 +228,7 @@ kubectl -n elastic-stack get networkpolicy
   ES_PASS="$(kubectl -n elastic-stack get secret elasticsearch-es-elastic-user \
   -o jsonpath='{.data.elastic}' | base64 --decode)"
 
-  ES_URL="https://${ES_HOST}:9200" \
+  ES_URL="https://${ES_HOST}:9200" \ 
   ES_USER=elastic \
   ES_PASS="$ES_PASS" \
   ES_INSECURE=true \
@@ -235,5 +241,23 @@ kubectl -n elastic-stack get networkpolicy
 The equivalent Kibana Dev Tools requests for creating the template and index,
 loading booking documents, and querying the alias are documented in
 [`scripts/flight-bookings-dev-console.md`](../scripts/flight-bookings-dev-console.md).
+
+## AZ Shutdown
+1. Get Status of Infrastructure and Elasticsearch nodes, Indices and Shards
+    ```
+    ./scripts/az_outage.sh status
+    ```
+2. Drain, Uncordown and Stop AZ compute instances
+   ```
+   # pick another zone if you want
+   ZONE=us-east-2c ./scripts/az_outage.sh drain
+   ZONE=us-east-2c ./scripts/az_outage.sh stop
+   ```
+3. (Optional) Restor the instance. Note the the node-group can recreate ec2 instances base don desired instances set.
+  ```
+  ZONE=us-east-2c ./scripts/az_outage.sh cmd_restore
+  ```
+
+
 
 # Teardown

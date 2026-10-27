@@ -25,10 +25,13 @@
 
 set -euo pipefail
 
-ES_NAMESPACE="${ES_NAMESPACE:-elastic}"
-ES_CLUSTER="${ES_CLUSTER:-flight-es}"
+ES_NAMESPACE="${ES_NAMESPACE:-elastic-stack}"
+ES_CLUSTER="${ES_CLUSTER:-elasticsearch}"
 ES_USER="${ES_USER:-elastic}"
-AWS_REGION="${AWS_REGION:-eu-central-1}"
+ES_HOST="$(kubectl -n elastic-stack get svc elasticsearch-es-http -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+ES_URL="https://${ES_HOST}:9200"
+
+AWS_REGION="${AWS_REGION:-us-east-2}"
 DRAIN_TIMEOUT="${DRAIN_TIMEOUT:-10m}"
 
 log() { echo "==> $*"; }
@@ -62,7 +65,7 @@ es_api() {
   local pass
   pass="$(kubectl -n "$ES_NAMESPACE" get secret "${ES_CLUSTER}-es-elastic-user" -o jsonpath='{.data.elastic}' | base64 -d)"
   kubectl -n "$ES_NAMESPACE" exec "$pod" -c elasticsearch -- \
-    curl -sk -u "${ES_USER}:${pass}" "https://localhost:9200$1"
+    curl -sk -u "${ES_USER}:${pass}" "${ES_URL}$1"
 }
 
 cmd_status() {

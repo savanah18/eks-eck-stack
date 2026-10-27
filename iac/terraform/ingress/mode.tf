@@ -11,7 +11,8 @@ data "terraform_remote_state" "eks" {
 }
 
 locals {
-  enabled = data.terraform_remote_state.eks.outputs.is_production
+  # enabled = data.terraform_remote_state.eks.outputs.is_production
+  enabled = true
 
   # HTTPS with an ACM certificate and a DNS record needs a hostname. Without one the
   # ALB serves HTTP on its AWS-generated hostname.
