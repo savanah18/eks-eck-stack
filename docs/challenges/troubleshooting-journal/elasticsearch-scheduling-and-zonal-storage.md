@@ -37,6 +37,15 @@ The values were changed to role-scoped hard topology spread constraints:
 Existing pods must be rolled so that they receive the updated topology
 constraints.
 
+## Node drain behavior
+
+When a node is drained, expect that some Elasticsearch pods may remain
+Pending because the hard topology spread constraints use
+`whenUnsatisfiable: DoNotSchedule`. The scheduler will not place a replacement
+pod if doing so would violate the configured zone or hostname distribution.
+Wait for suitable capacity in another eligible zone or add capacity before
+relaxing the constraints.
+
 ## Root cause
 
 The remaining scheduling failure was caused by zonal EBS volume placement.

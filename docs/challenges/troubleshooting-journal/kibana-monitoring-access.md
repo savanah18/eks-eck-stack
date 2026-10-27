@@ -74,3 +74,10 @@ should ultimately be added to the Helm values.
 
 The solution was verified by logging into Kibana with the `elastic` user and
 accessing Stack Monitoring successfully.
+
+## Delayed dashboard data
+
+After Metricbeat and Kibana become healthy, the Stack Monitoring dashboard may
+initially show no data. Wait a little while for Metricbeat to collect and
+index monitoring documents, then refresh the page. A short delay is expected
+before the dashboard becomes populated.
