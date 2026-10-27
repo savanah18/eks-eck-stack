@@ -6,8 +6,9 @@
 This project involves designing and deploying an **Elastic Cluster on Kubernetes** that demonstrates practical understanding of running a stateful applications on top of an orchestration solution with **storage**, **scalability**, **reliability** and **observability** in consideration. 
 
 ### Challenges, Assumptions and Limitations
+
 This project is limited to the following
-- 
+
 
 ## Infrastructure Overview
 This project is built on top of Amazon Web Services (AWS) as public cloud infrastructure provisioner - specifically **AWS Elastic Kubernetes** (AWS EKS). The target stateful applications that is the subject of deployment is an **Elastic Cluster** - a highly-available / scalable distributed search and analytics engine. 
