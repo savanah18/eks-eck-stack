@@ -40,6 +40,9 @@ The following details all significant design decisions and configuration.
 ### Upgrade Procedures
 As most of the resources provisioned for this project are using terraform, upgrade procedures mostly revolves around updating necessary terraform resources accordingly. 
 
+### Scaling
+Scaling works when updating elasticsearch nodeset count
+
 ## Troubleshooting Steps for Consumers
 
 ## Monitoring Setup
