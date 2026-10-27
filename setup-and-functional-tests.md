@@ -237,7 +237,7 @@ kubectl -n elastic-stack get networkpolicy
   ES_PASS="$(kubectl -n elastic-stack get secret elasticsearch-es-elastic-user \
   -o jsonpath='{.data.elastic}' | base64 --decode)"
 
-  ES_URL="https://${ES_HOST}:9200" \ 
+  ES_URL="https://${ES_HOST}:9200" \
   ES_USER=elastic \
   ES_PASS="$ES_PASS" \
   ES_INSECURE=true \
@@ -262,10 +262,10 @@ loading booking documents, and querying the alias are documented in
    ZONE=us-east-2c ./scripts/az_outage.sh drain
    ZONE=us-east-2c ./scripts/az_outage.sh stop
    ```
-3. (Optional) Restor the instance. Note the the node-group can recreate ec2 instances base don desired instances set.
-  ```
-  ZONE=us-east-2c ./scripts/az_outage.sh cmd_restore
-  ```
+3. (Optional) Restore the instance. Note the the node-group can recreate ec2 instances base don desired instances set.
+    ```
+    ZONE=us-east-2c ./scripts/az_outage.sh cmd_restore
+    ```
 
 
 
