@@ -30,6 +30,14 @@ eck-elasticsearch:
         cpu: "0.5"
     podTemplate:
       spec:
+        # JVM heap is not set here, so Elasticsearch sizes it automatically from the
+        # memory limit above. To pin it, set ES_JAVA_OPTS on the elasticsearch container,
+        # with -Xms and -Xmx equal, at about half the memory limit (2Gi limit -> 1g heap):
+        # containers:
+        # - name: elasticsearch
+        #   env:
+        #   - name: ES_JAVA_OPTS
+        #     value: "-Xms1g -Xmx1g"
         affinity:
           nodeAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
@@ -90,6 +98,14 @@ eck-elasticsearch:
         cpu: "1"
     podTemplate:
       spec:
+        # JVM heap is not set here, so Elasticsearch sizes it automatically from the
+        # memory limit above. To pin it, set ES_JAVA_OPTS on the elasticsearch container,
+        # with -Xms and -Xmx equal, at about half the memory limit (2Gi limit -> 1g heap):
+        # containers:
+        # - name: elasticsearch
+        #   env:
+        #   - name: ES_JAVA_OPTS
+        #     value: "-Xms1g -Xmx1g"
         affinity:
           nodeAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
@@ -134,8 +150,13 @@ eck-elasticsearch:
 
   http:
     service:
+      # NLB created by the AWS Load Balancer Controller; without this it is internal-only
+      # metadata:
+      #   annotations:
+      #     
+      #     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
       spec:
-        type: ClusterIP #LoadBalancer for temporary access
+        type: ClusterIP # use load balancer for temporary access
 
   podDisruptionBudget:
     spec:

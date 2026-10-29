@@ -1,0 +1,60 @@
+# Cluster-level Elasticsearch and Kibana monitoring.
+# Runs as a single-replica Deployment so cluster-scoped metricsets
+# (cluster_stats, node, shard, pending_tasks) are collected once,
+# instead of from every DaemonSet pod.
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: metricbeat-cluster
+  namespace: elastic-stack
+spec:
+  type: metricbeat
+  version: 9.5.0
+  elasticsearchRef:
+    name: elasticsearch
+  config:
+    metricbeat:
+      modules:
+      - module: elasticsearch
+        period: 10s
+        hosts:
+        - https://elasticsearch-es-http.elastic-stack.svc:9200
+        username: elastic
+        password: ${MONITORED_ES_PASSWORD}
+        ssl.verification_mode: none
+        xpack.enabled: true
+        metricsets:
+        - cluster_stats
+        - index
+        - index_recovery
+        - index_summary
+        - node
+        - node_stats
+        - pending_tasks
+        - shard
+      - module: kibana
+        period: 10s
+        hosts:
+        - https://kibana-kb-http.elastic-stack.svc:5601
+        username: elastic
+        password: ${MONITORED_ES_PASSWORD}
+        ssl.verification_mode: none
+        xpack.enabled: true
+        metricsets:
+        - stats
+  deployment:
+    replicas: 1
+    podTemplate:
+      spec:
+        serviceAccountName: metricbeat
+        automountServiceAccountToken: true
+        securityContext:
+          runAsUser: 0
+        containers:
+        - name: metricbeat
+          env:
+          - name: MONITORED_ES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: elastic
+                name: elasticsearch-es-elastic-user
